@@ -9,9 +9,10 @@ import os
 import re
 from dataclasses import dataclass, asdict
 from typing import Optional
-import anthropic
+import google.generativeai as genai
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 # ---------------------------------------------------------------------------
 # Data models
@@ -129,22 +130,16 @@ def evaluate_candidate(resume_text: str, jd_text: str) -> EvaluationResult:
     """
     Main entry point. Sends resume + JD to Claude and parses structured output.
     """
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=2000,
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": _build_scoring_prompt(resume_text, jd_text)}
-        ]
-    )
-
-    raw = message.content[0].text.strip()
-
-    # Strip accidental markdown fences
-    raw = re.sub(r"^```json\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-
-    data = json.loads(raw)
+    prompt = f"{SYSTEM_PROMPT}\n\n{_build_scoring_prompt(resume_text, jd_text)}"
+    response = model.generate_content(prompt)
+    raw = response.text.strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
+    
+    try:
+        data = json.loads(raw, strict=False)
+    except Exception as e:
+        reason = response.candidates[0].finish_reason if response.candidates else 'None'
+        raise ValueError(f"JSON Decode Error in Engine: {str(e)} | Finish Reason: {reason} | Raw output: {repr(raw)}")
 
     return EvaluationResult(
         candidate_name=data["candidate_name"],

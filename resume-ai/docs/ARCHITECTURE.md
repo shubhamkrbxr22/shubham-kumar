@@ -90,12 +90,12 @@ PDF bytes
 
 | Task | Model | Rationale |
 |---|---|---|
-| Resume parsing | `claude-sonnet-4-20250514` | Best JSON fidelity; structured output reliability |
-| Scoring engine | `claude-sonnet-4-20250514` | Reasoning required for nuanced similarity judgements |
-| Verification synthesis | `claude-sonnet-4-20250514` | Short prompt, low cost, fast |
-| Question generation | `claude-sonnet-4-20250514` | Creative + contextual — Haiku would underperform here |
+| Resume parsing | `gemini-2.5-flash` | Best JSON fidelity; structured output reliability and speed |
+| Scoring engine | `gemini-2.5-flash` | Reasoning required for nuanced similarity judgements |
+| Verification synthesis | `gemini-2.5-flash` | Short prompt, low cost, fast |
+| Question generation | `gemini-2.5-flash` | Creative + contextual |
 
-**Alternative:** OpenAI `gpt-4o` works as a drop-in; switch by changing the client initialisation. LangChain abstraction can be added if multi-provider routing is needed.
+**Alternative:** OpenAI `gpt-4o` or `gemini-2.5-pro` works as a drop-in; switch by changing the client initialisation. LangChain abstraction can be added if multi-provider routing is needed.
 
 ### Semantic Similarity — The Kafka ↔ Kinesis Problem
 

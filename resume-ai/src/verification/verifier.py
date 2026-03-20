@@ -11,9 +11,10 @@ import urllib.request
 import urllib.error
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-import anthropic
+import google.generativeai as genai
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 
 @dataclass
@@ -196,15 +197,15 @@ Scoring guide:
 - 0.2-0.49: significant gaps or inconsistencies
 - 0.0-0.19: major red flags or unverifiable claims
 """
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=500,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    text = response.content[0].text.strip()
-    text = re.sub(r"^```json\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
-    data = json.loads(text)
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    try:
+        data = json.loads(text, strict=False)
+    except Exception as e:
+        reason = response.candidates[0].finish_reason if response.candidates else 'None'
+        raise ValueError(f"JSON Decode Error in Verifier: {str(e)} | Finish Reason: {reason} | Raw output: {repr(text)}")
+    
     return data["authenticity_score"], data["red_flags"], data["summary"]
 
 

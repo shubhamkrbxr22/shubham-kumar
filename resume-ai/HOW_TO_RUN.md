@@ -2,7 +2,7 @@
 
 ## Prerequisites
 - Python 3.10 or higher
-- An Anthropic API key → https://console.anthropic.com
+- A Google Gemini API key → https://aistudio.google.com/app/apikey
 - (Optional) A GitHub token → https://github.com/settings/tokens
 
 ---
@@ -49,17 +49,17 @@ pip install -r requirements.txt
 
 Windows (Command Prompt):
 ```
-set ANTHROPIC_API_KEY=sk-ant-your-key-here
+set GEMINI_API_KEY=your-gemini-key-here
 ```
 
 Windows (PowerShell):
 ```
-$env:ANTHROPIC_API_KEY="sk-ant-your-key-here"
+$env:GEMINI_API_KEY="your-gemini-key-here"
 ```
 
 Mac / Linux:
 ```
-export ANTHROPIC_API_KEY=sk-ant-your-key-here
+export GEMINI_API_KEY=your-gemini-key-here
 ```
 
 Optional — GitHub token (increases rate limit for verification):
@@ -112,8 +112,8 @@ ui/demo.html
 
 Just double-click demo.html or drag it into Chrome/Edge/Firefox.
 
-The UI connects directly to the Anthropic API from your browser.
-Make sure you paste your API key into the browser console if prompted,
+The UI connects directly to the Gemini API from your browser.
+Make sure you paste your API key into the browser prompt if prompted,
 or it will use the environment key set above.
 
 ---
@@ -220,7 +220,7 @@ Problem: "ModuleNotFoundError"
 Solution: Make sure your virtual environment is activated and you ran pip install -r requirements.txt
 
 Problem: "AuthenticationError" or 401
-Solution: Check that ANTHROPIC_API_KEY is set correctly in your terminal session
+Solution: Check that GEMINI_API_KEY is set correctly in your terminal session
 
 Problem: "Could not import uvicorn"
 Solution: Run: pip install uvicorn[standard]

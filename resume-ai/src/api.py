@@ -50,7 +50,13 @@ class BatchEvaluateRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    import google.generativeai as genai
+    import os
+    try:
+        models = [m.name for m in genai.list_models()]
+        return {"status": "ok", "models_available": models}
+    except Exception as e:
+        return {"status": "ok", "error": str(e)}
 
 
 @app.post("/evaluate")

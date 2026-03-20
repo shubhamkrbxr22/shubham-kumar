@@ -7,9 +7,10 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-import anthropic
+import google.generativeai as genai
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 
 # ---------------------------------------------------------------------------
@@ -123,15 +124,14 @@ Rules:
 - For low achievement score: ask "What metric moved as a direct result of your work?"
 """
 
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1500,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    text = response.content[0].text.strip()
-    text = re.sub(r"^```json\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
-    data = json.loads(text)
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    try:
+        data = json.loads(text, strict=False)
+    except Exception as e:
+        reason = response.candidates[0].finish_reason if response.candidates else 'None'
+        raise ValueError(f"JSON Decode Error in Generator: {str(e)} | Finish Reason: {reason} | Raw output: {repr(text)}")
 
     return QuestionSet(
         tier=tier,

@@ -7,9 +7,10 @@ import json
 import re
 import os
 from dataclasses import dataclass, field
-import anthropic
+import google.generativeai as genai
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY", ""))
+model = genai.GenerativeModel("gemini-flash-latest")
 
 
 @dataclass
@@ -64,16 +65,16 @@ RESUME TEXT:
 
 def parse_resume_llm(raw_text: str) -> ParsedResume:
     """LLM-powered parse — accurate but costs a token call."""
-    response = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1500,
-        system=_PARSE_SYSTEM,
-        messages=[{"role": "user", "content": _PARSE_PROMPT.format(resume_text=raw_text)}]
-    )
-    text = response.content[0].text.strip()
-    text = re.sub(r"^```json\s*", "", text)
-    text = re.sub(r"\s*```$", "", text)
-    data = json.loads(text)
+    prompt = f"{_PARSE_SYSTEM}\n\n{_PARSE_PROMPT.format(resume_text=raw_text)}"
+    response = model.generate_content(prompt)
+    text = response.text.strip()
+    text = text.replace("```json", "").replace("```", "").strip()
+    try:
+        data = json.loads(text, strict=False)
+    except Exception as e:
+        reason = response.candidates[0].finish_reason if response.candidates else 'None'
+        raise ValueError(f"JSON Decode Error in Parser: {str(e)} | Finish Reason: {reason} | Raw output: {repr(text)}")
+    
     parsed = ParsedResume(**{k: data.get(k, v) for k, v in ParsedResume().__dict__.items()})
     parsed.raw_text = raw_text
     return parsed

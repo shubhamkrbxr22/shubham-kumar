@@ -414,7 +414,7 @@
     <div class="logo">Recruit<span>AI</span></div>
     <div class="badge">Assignment 5 · Demo</div>
     <div class="topbar-right">
-      <span style="font-size:12px;color:var(--muted)">Powered by Claude claude-sonnet-4-20250514</span>
+      <span style="font-size:12px;color:var(--muted)">Powered by Gemini gemini-flash-latest</span>
     </div>
   </header>
 
@@ -604,41 +604,39 @@ function scoreColor(s) {
 
 function pct(s) { return Math.round(s * 100) + '%'; }
 
-// Call Claude API
-async function callClaude(systemPrompt, userPrompt) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+// Call FastAPI Local API
+async function callLocalAPI(jd, resume) {
+  const response = await fetch('http://127.0.0.1:8000/evaluate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
+      resume_text: resume,
+      jd_text: jd,
+      github_url: "",
+      linkedin_url: "",
+      skip_verification: true
     })
   });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message || 'API error');
-  let text = data.content.map(b => b.text || '').join('');
-  // Strip markdown fences
-  text = text.replace(/^```json\s*/,'').replace(/\s*```\s*$/,'').trim();
-  // Extract first complete JSON object if there's trailing text
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) text = match[0];
-  try {
-    return JSON.parse(text);
-  } catch(e) {
-    // Attempt to repair truncated JSON by closing open structures
-    let repaired = text;
-    // Count unclosed quotes - if odd number, close string
-    const quoteCount = (repaired.match(/(?<!\\)"/g) || []).length;
-    if (quoteCount % 2 !== 0) repaired += '"';
-    // Close any open arrays and objects
-    const opens = (repaired.match(/\[/g)||[]).length - (repaired.match(/\]/g)||[]).length;
-    const objOpens = (repaired.match(/\{/g)||[]).length - (repaired.match(/\}/g)||[]).length;
-    for (let i=0; i<opens; i++) repaired += ']';
-    for (let i=0; i<objOpens; i++) repaired += '}';
-    return JSON.parse(repaired);
+  
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Server error');
   }
+  
+  const raw = await response.json();
+  
+  return {
+    candidate_name: raw.evaluation.candidate_name || raw.parsed.name || "Candidate",
+    overall_score: raw.evaluation.overall_score || 0,
+    tier: raw.questions.tier || 'C',
+    tier_rationale: raw.questions.rationale || '',
+    recommended_action: raw.questions.recommended_action || '',
+    exact_match: raw.evaluation.exact_match,
+    semantic_similarity: raw.evaluation.semantic_similarity,
+    achievement_impact: raw.evaluation.achievement_impact,
+    ownership_depth: raw.evaluation.ownership_depth,
+    interview_questions: raw.questions.questions || []
+  };
 }
 
 async function runEvaluation() {
@@ -651,50 +649,11 @@ async function runEvaluation() {
   const status = document.getElementById('eval-status');
   const area = document.getElementById('results-area');
 
-  const techAliases = {
-    kafka: ['rabbitmq','kinesis','pubsub','nats','sqs'],
-    kubernetes: ['k8s','openshift','ecs','nomad'],
-    postgresql: ['mysql','aurora','cockroachdb'],
-    redis: ['memcached','elasticache'],
-    react: ['vue','angular','svelte'],
-    spark: ['flink','databricks','dbt'],
-    aws: ['gcp','azure'],
-    tensorflow: ['pytorch','jax','keras'],
-    elasticsearch: ['opensearch','solr']
-  };
-
-  const systemPrompt = `You are an expert technical recruiter. Evaluate resumes against JDs with precision.
-Respond ONLY with valid JSON. No markdown. No prose outside JSON.
-Technology equivalences (partial credit, not full match): ${JSON.stringify(techAliases)}`;
-
-  const userPrompt = `Evaluate this candidate. Return ONLY a valid JSON object, nothing else.
-
-JOB DESCRIPTION:
-${jd}
-
-RESUME:
-${resume}
-
-Your response must be a single JSON object with these exact keys:
-{
-  "candidate_name": "full name",
-  "exact_match": { "score": 0.70, "explanation": "what matched and what was missing", "evidence": ["quote from resume"] },
-  "semantic_similarity": { "score": 0.80, "explanation": "transferable skills found", "evidence": ["quote"] },
-  "achievement_impact": { "score": 0.75, "explanation": "quality of achievements", "evidence": ["best achievement quote"] },
-  "ownership_depth": { "score": 0.65, "explanation": "ownership vs assistance pattern", "evidence": ["quote"] },
-  "overall_score": 0.72,
-  "tier": "B",
-  "tier_rationale": "Brief reason for tier.",
-  "recommended_action": "Next step for recruiter.",
-  "interview_questions": ["Q1 for this candidate", "Q2", "Q3", "Q4", "Q5"]
-}
-Scores are decimals 0 to 1. Tier A if overall >= 0.75, Tier B if 0.50 to 0.74, Tier C if below 0.50.`;
-
-  area.innerHTML = '<div class="loading"><div class="spinner"></div> Evaluating candidate — scoring 4 dimensions...</div>';
+  area.innerHTML = '<div class="loading"><div class="spinner"></div> Evaluating via local FastAPI...</div>';
   status.textContent = '';
 
   try {
-    const data = await callClaude(systemPrompt, userPrompt);
+    const data = await callLocalAPI(jd, resume);
     renderResults(data, resume);
     status.textContent = '✓ Evaluation complete';
   } catch(e) {
