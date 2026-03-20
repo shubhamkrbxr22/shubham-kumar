@@ -23,7 +23,7 @@ A scalable AI-powered backend system that evaluates resumes against job descript
 
 ## 🎥 Demo Video
 
-🔗 Add your demo link here  
+🔗 https://youtu.be/nU0GAUxjZJc 
 
 ---
 
